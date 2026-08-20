@@ -11,6 +11,13 @@ from wan.modules.t5 import umt5_xxl
 from wan.modules.causal_model import CausalWanModel
 
 
+import os
+if 'h200' in os.environ["JOHN_MODE_FOR_TRAINING"]:
+    FOLDER_PATH_1_3B=os.path.join("/mnt/ddn/zhenhao_team/models/Wan2.1-T2V-1.3B")
+    FOLDER_PATH_14B=os.path.join("/mnt/ddn/zhenhao_team/models/Wan2.1-T2V-14B")
+
+DEFAULT_FOLDER_PATH_FOR_MODULES = FOLDER_PATH_1_3B
+    
 class WanTextEncoder(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -22,12 +29,12 @@ class WanTextEncoder(torch.nn.Module):
             device=torch.device('cpu')
         ).eval().requires_grad_(False)
         self.text_encoder.load_state_dict(
-            torch.load("wan_models/Wan2.1-T2V-1.3B/models_t5_umt5-xxl-enc-bf16.pth",
+            torch.load(f"{DEFAULT_FOLDER_PATH_FOR_MODULES}/models_t5_umt5-xxl-enc-bf16.pth",
                        map_location='cpu', weights_only=False)
         )
 
         self.tokenizer = HuggingfaceTokenizer(
-            name="wan_models/Wan2.1-T2V-1.3B/google/umt5-xxl/", seq_len=512, clean='whitespace')
+            name=f"{DEFAULT_FOLDER_PATH_FOR_MODULES}/google/umt5-xxl/", seq_len=512, clean='whitespace')
 
     @property
     def device(self):
@@ -66,7 +73,7 @@ class WanVAEWrapper(torch.nn.Module):
 
         # init model
         self.model = _video_vae(
-            pretrained_path="wan_models/Wan2.1-T2V-1.3B/Wan2.1_VAE.pth",
+            pretrained_path=f"{DEFAULT_FOLDER_PATH_FOR_MODULES}/Wan2.1_VAE.pth",
             z_dim=16,
         ).eval().requires_grad_(False)
 
@@ -122,12 +129,21 @@ class WanDiffusionWrapper(torch.nn.Module):
             sink_size=0
     ):
         super().__init__()
+        if model_name=="Wan2.1-T2V-1.3B":
+            model_path = FOLDER_PATH_1_3B
+            print("using 1.3b model")
+        elif model_name=="Wan2.1-T2V-14B":
+            model_path = FOLDER_PATH_14B
+            print("using 14b model")
+        else:
+            raise NotImplementedError(f"{model_name} not implemented")
+            
 
         if is_causal:
             self.model = CausalWanModel.from_pretrained(
-                f"wan_models/{model_name}/", local_attn_size=local_attn_size, sink_size=sink_size)
+                f"{model_path}", local_attn_size=local_attn_size, sink_size=sink_size)
         else:
-            self.model = WanModel.from_pretrained(f"wan_models/{model_name}/")
+            self.model = WanModel.from_pretrained(f"{model_path}")
         self.model.eval()
 
         # For non-causal diffusion, all frames share the same timestep
@@ -138,7 +154,7 @@ class WanDiffusionWrapper(torch.nn.Module):
         )
         self.scheduler.set_timesteps(1000, training=True)
 
-        self.seq_len = 32760  # [1, 21, 16, 60, 104]
+        self.seq_len = 1560 * local_attn_size if local_attn_size > 21 else 32760 #[1, 21, 16, 60, 104]
         self.post_init()
 
     def enable_gradient_checkpointing(self) -> None:

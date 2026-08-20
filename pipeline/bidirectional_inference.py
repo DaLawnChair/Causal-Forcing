@@ -30,6 +30,9 @@ class BidirectionalInferencePipeline(torch.nn.Module):
             timesteps = torch.cat((self.scheduler.timesteps.cpu(), torch.tensor([0], dtype=torch.float32)))
             self.denoising_step_list = timesteps[1000 - self.denoising_step_list]
 
+
+        self.device = device
+
     def inference(self, noise: torch.Tensor, text_prompts: List[str]) -> torch.Tensor:
         """
         Perform inference on the given noise and text prompts.
@@ -69,3 +72,67 @@ class BidirectionalInferencePipeline(torch.nn.Module):
         video = self.vae.decode_to_pixel(pred_image_or_video)
         video = (video * 0.5 + 0.5).clamp(0, 1)
         return video
+
+
+    def inference_train(self, noise: torch.Tensor, conditional_dict) -> torch.Tensor:
+        """
+        Perform inference on the given noise and text prompts.
+        Inputs:
+            noise (torch.Tensor): The input noise tensor of shape
+                (batch_size, num_frames, num_channels, height, width).
+            text_prompts (List[str]): The list of text prompts.
+        Outputs:
+            video (torch.Tensor): The generated video tensor of shape
+                (batch_size, num_frames, num_channels, height, width). It is normalized to be in the range [0, 1].
+        """
+        # conditional_dict = self.text_encoder(
+        #     text_prompts=text_prompts
+        # )
+        
+        # initial point
+        noisy_image_or_video = noise
+
+        # use the last n-1 timesteps to simulate the generator's input
+        # for index, current_timestep in enumerate(self.denoising_step_list[:-1]):
+        #     print(f"BidirectionalInferencePipeline.inference_train() index: {index}, current_timestep: {current_timestep}")
+        #     _, pred_image_or_video = self.generator(
+        #         noisy_image_or_video=noisy_image_or_video,
+        #         conditional_dict=conditional_dict,
+        #         timestep=torch.ones(
+        #             noise.shape[:2], dtype=torch.long, device=noise.device) * current_timestep
+        #     )  # [B, F, C, H, W]
+
+        #     next_timestep = self.denoising_step_list[index + 1] * torch.ones(
+        #         noise.shape[:2], dtype=torch.long, device=noise.device)
+
+        #     noisy_image_or_video = self.scheduler.add_noise(
+        #         pred_image_or_video.flatten(0, 1),
+        #         torch.randn_like(pred_image_or_video.flatten(0, 1)),
+        #         next_timestep.flatten(0, 1)
+        #     ).unflatten(0, noise.shape[:2])
+
+
+        for index, current_timestep in enumerate(self.denoising_step_list):
+            print(f"BidirectionalInferencePipeline.inference_train() index: {index}, current_timestep: {current_timestep}")
+            _, pred_image_or_video = self.generator(
+                noisy_image_or_video=noisy_image_or_video,
+                conditional_dict=conditional_dict,
+                timestep=torch.ones(
+                    noise.shape[:2], dtype=torch.long, device=noise.device) * current_timestep
+            )  # [B, F, C, H, W]
+
+
+            if index < len(self.denoising_step_list) - 1:
+                next_timestep = self.denoising_step_list[index + 1] * torch.ones(
+                    noise.shape[:2], dtype=torch.long, device=noise.device)
+                noisy_image_or_video = self.scheduler.add_noise(
+                    pred_image_or_video.flatten(0, 1),
+                    torch.randn_like(pred_image_or_video.flatten(0, 1)),
+                    next_timestep.flatten(0, 1)
+                ).unflatten(0, noise.shape[:2])
+            else:
+                print("DONE, no renoise")
+
+        # video = self.vae.decode_to_pixel(pred_image_or_video)
+        # video = (video * 0.5 + 0.5).clamp(0, 1)
+        return pred_image_or_video

@@ -1,3 +1,7 @@
+"""
+Ported over from the original self forcing repo, since this stores the videos in prompt[:100]-seed_idx.mp4
+"""
+
 import argparse
 import torch
 import os
@@ -30,9 +34,16 @@ parser.add_argument("--num_output_frames", type=int, default=21,
 parser.add_argument("--i2v", action="store_true", help="Whether to perform I2V (or T2V by default)")
 parser.add_argument("--use_ema", action="store_true", help="Whether to use EMA parameters")
 parser.add_argument("--seed", type=int, default=0, help="Random seed")
+
+# found that 150 is the sweet spot for the prefix index to have no collisions
+# in /shared/john/VBench/custom_small_vbench_set/sf_cf_prompts_extended.txt
+parser.add_argument("--save_prompt_name_x_prefix_idx", type=int, default=150, help="Index for saving prompt names")
+
 parser.add_argument("--num_samples", type=int, default=1, help="Number of samples to generate per prompt")
 parser.add_argument("--save_with_index", action="store_true",
                     help="Whether to save the video using the index or prompt as the filename")
+
+parser.add_argument("--truncate-file-names", action="store_true",help="to truncate file names or not")
 args = parser.parse_args()
 
 # Initialize distributed inference
@@ -49,6 +60,8 @@ else:
     world_size = 1
     set_seed(args.seed)
 
+
+assert local_rank==0, "Warning, does not properly support distributed inference yet, please run with single GPU for now"
 print(f'Free VRAM {get_cuda_free_memory_gb(gpu)} GB')
 low_memory = get_cuda_free_memory_gb(gpu) < 40
 
@@ -98,6 +111,7 @@ if dist.is_initialized():
 else:
     sampler = SequentialSampler(dataset)
 dataloader = DataLoader(dataset, batch_size=1, sampler=sampler, num_workers=0, drop_last=False)
+dataloader = DataLoader(dataset, batch_size=1, num_workers=0, drop_last=False, worker_init_fn=None)
 
 # Create output directory (only on main process to avoid race conditions)
 if local_rank == 0:
@@ -119,7 +133,7 @@ def encode(self, videos: torch.Tensor) -> torch.Tensor:
     output = torch.stack(output, dim=0)
     return output
 
-video_paths=[]
+
 for i, batch_data in tqdm(enumerate(dataloader), disable=(local_rank != 0)):
     idx = batch_data['idx'].item()
 
@@ -161,7 +175,8 @@ for i, batch_data in tqdm(enumerate(dataloader), disable=(local_rank != 0)):
         sampled_noise = torch.randn(
             [args.num_samples, args.num_output_frames, 16, 60, 104], device=device, dtype=torch.bfloat16
         )
-
+        
+    
     # Generate 81 frames
     video, latents = pipeline.inference(
         noise=sampled_noise,
@@ -182,25 +197,12 @@ for i, batch_data in tqdm(enumerate(dataloader), disable=(local_rank != 0)):
 
     # Save the video if the current prompt is not a dummy prompt
     if idx < num_prompts:
-        # model = "regular" if not args.use_ema else "ema"
+        model = "regular" if not args.use_ema else "ema"
+
         for seed_idx in range(args.num_samples):
             # All processes save their videos
             if args.save_with_index:
-                # output_path = os.path.join(args.output_folder, f'{idx}-{seed_idx}_{model}.mp4')
-                output_path = os.path.join(args.output_folder, f'{idx}-{seed_idx}.mp4')
+                output_path = os.path.join(args.output_folder, f'{idx:05d}-{seed_idx}.mp4')
             else:
-                output_path = os.path.join(args.output_folder, f'{prompt[:100]}-{seed_idx}.mp4')
+                output_path = os.path.join(args.output_folder, f'{prompt[:args.save_prompt_name_x_prefix_idx]}-{args.seed}.mp4')
             write_video(output_path, video[seed_idx], fps=16)
-            video_paths.append(output_path)
-
-
-from flicker_metric.temporal_flickering_ratio import compute_temporal_flickering_ratio_video_paths
-all_results, video_results = compute_temporal_flickering_ratio_video_paths(video_paths)
-temporal_flickering_results = {
-    'overall': all_results,
-    'total_videos': len(video_results),
-    'video_results': video_results
-}
-import json 
-temporal_flicker_json_path = os.path.join(args.output_folder, "sample_flickering_results.json")
-json.dump(temporal_flickering_results, open(temporal_flicker_json_path, "w"), indent=4)
