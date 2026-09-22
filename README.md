@@ -20,13 +20,13 @@
 
 </div>
   </p>
-  <h3 align="center"><a href="https://arxiv.org/abs/2602.02214">Causal Forcing</a> | <a href="https://arxiv.org/abs/2605.15141">Causal Forcing++</a> | <a href="https://thu-ml.github.io/CausalForcing.github.io">Website</a> | <a href="https://huggingface.co/zhuhz22/Causal-Forcing/tree/main">Models</a> | <a href="assets/wechat.jpg">WeChat</a>  | <a href="https://my.feishu.cn/wiki/AjBSwcjpqiN0ECkodIWcGDcMn4e?from=from_copylink">Document</a> </h3>
+  <h3 align="center"><a href="https://arxiv.org/abs/2602.02214">Causal Forcing</a> | <a href="https://arxiv.org/abs/2605.15141">Causal Forcing++</a> | <a href="https://thu-ml.github.io/CausalForcing.github.io">Website</a> | <a href="https://huggingface.co/zhuhz22/Causal-Forcing/tree/main">Models</a> | <a href="https://my.feishu.cn/wiki/AjBSwcjpqiN0ECkodIWcGDcMn4e?from=from_copylink">Document</a> </h3>
 </p>
 
 
 
 -----
-The Causal Forcing series uses **Causal ODE** or **Causal Consistency Distillation** to drive asymmetric DMD as a theoretically correct initialization for real-time interactive video generation. **Refer to [this extension](#minute-level-long-video-generation) for long video generation.**
+The Causal Forcing series uses **Causal ODE** or **Causal Consistency Distillation** to drive asymmetric DMD as a theoretically correct initialization for real-time interactive video generation. **Refer to [this extension for long video generation](#minute-level-long-video-generation).**
 
 [Causal Forcing](https://arxiv.org/abs/2602.02214) significantly outperforms Self Forcing in **both visual quality and motion dynamics**, while keeping **the same training budget and inference efficiency**. We support both chunk-wise and **frame-wise** models, with the latter natively unifying T2V and **I2V**.
 
@@ -62,6 +62,8 @@ We further propose [**Causal Forcing++**](https://arxiv.org/abs/2605.15141)[ tec
 https://github.com/user-attachments/assets/310f0cfa-e1bb-496d-8941-87f77b3271c0
 
 ## 🔥 News
+- **2026.7.23**: [Self Gradient Forcing](https://github.com/zhuang2002/Self_Gradient_Forcing) is built on Causal Forcing initialization.
+- **2026.7.20**: Happy to see that the recent SOTA video world models [DreamX-World 1.0](https://arxiv.org/pdf/2606.16993) and [Matrix-Game 3.5](https://matrix-game-v3-5.github.io/paper/Matrix-Game-3.5.pdf) are built on Causal Forcing!
 - **2026.5.17**: We release Causal Forcing for the HY1.5-TI2V-8B model! Refer to [this repo](https://github.com/shengshu-ai/minWM) for the details. This model explicitly supports I2V.
 - **2026.5.15**: We release [Causal Forcing++](https://arxiv.org/abs/2605.15141), supporting Casual Consistency Distillation for few-step initialization, and open-source **the first frame-wise 2-step AR model** comparable to chunk-wise 4-step models!
 - **2026.5.10**: Thanks to @[AshadowZ](https://github.com/AshadowZ), now our chunk-wise ODE data curation is **3x faster**!
