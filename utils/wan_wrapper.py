@@ -12,9 +12,8 @@ from wan.modules.causal_model import CausalWanModel
 
 
 import os
-if 'h200' in os.environ["JOHN_MODE_FOR_TRAINING"]:
-    FOLDER_PATH_1_3B=os.path.join("/mnt/ddn/zhenhao_team/models/Wan2.1-T2V-1.3B")
-    FOLDER_PATH_14B=os.path.join("/mnt/ddn/zhenhao_team/models/Wan2.1-T2V-14B")
+FOLDER_PATH_1_3B=os.path.join("/mnt/ddn/zhenhao_team/models/Wan2.1-T2V-1.3B")
+FOLDER_PATH_14B=os.path.join("/mnt/ddn/zhenhao_team/models/Wan2.1-T2V-14B")
 
 DEFAULT_FOLDER_PATH_FOR_MODULES = FOLDER_PATH_1_3B
     
